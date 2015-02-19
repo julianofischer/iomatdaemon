@@ -118,7 +118,7 @@ def sendEmailInfo(info,receiver):
     session.ehlo()
     session.starttls()
     session.login(gmail_username,gmail_pw)
-    session.sendmail(gmail_username,receivers,msg.as_string())
+    session.sendmail(gmail_username,receiver,msg.as_string())
     session.quit()
 
 #recebe um element e busca no arquivo o conteúdo
