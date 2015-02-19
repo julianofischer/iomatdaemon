@@ -54,7 +54,7 @@ def loadConf():
     #print "username: %s" % gmail_username
     #print "passwd: %s" % gmail_pw
     
-    logging_file = datetime.datetime.now().strftime("%I:%M%p on %B %d %Y")
+    logging_file = datetime.now().strftime("%I:%M%p on %B %d %Y")
     logging.basicConfig(filename=logging_file,level=logging.DEBUG)
     
 #classe para representar conexão com BD
@@ -204,7 +204,6 @@ if __name__ == "__main__":
         gmail_username = None
         gmail_pw = None
         email_subject = None
-
         main()
     except Exception as exc:
          exc_type, exc_obj, exc_tb = sys.exc_info()
