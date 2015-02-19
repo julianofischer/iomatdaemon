@@ -16,7 +16,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''                                    
 
-import requests, sqlite3, os, commands, pyPdf, smtplib, sys, syslog, traceback, ConfigParser, json
+import requests, sqlite3, os, commands, pyPdf, smtplib, sys,  traceback, ConfigParser, json, logging
 from BeautifulSoup import BeautifulSoup
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -33,9 +33,9 @@ def loadConf():
     config = ConfigParser.ConfigParser()
     config.read('defaults.cfg')
     dict_conf = json.loads (config.get("search","emails"))
-    print dict_conf
-    for key in dict_conf.keys():
-        print "Key: %s" % key
+    #print dict_conf
+    #for key in dict_conf.keys():
+        #print "Key: %s" % key
     
     global email_subject
     global gmail_username
@@ -43,7 +43,7 @@ def loadConf():
     
     email_subject = config.get("conf","subject")
     
-    print "email_subject: %s" % email_subject
+    #print "email_subject: %s" % email_subject
     
     with sqlite3.connect(DB_FILENAME) as conn:
         cur = conn.cursor()
@@ -51,9 +51,11 @@ def loadConf():
         rows = cur.fetchall()
         gmail_username = rows[0][1]
         gmail_pw = rows[0][2]
-    print "username: %s" % gmail_username
-    print "passwd: %s" % gmail_pw
+    #print "username: %s" % gmail_username
+    #print "passwd: %s" % gmail_pw
     
+    logging_file = datetime.datetime.now().strftime("%I:%M%p on %B %d %Y")
+    logging.basicConfig(filename=logging_file,level=logging.DEBUG)
     
 #classe para representar conexão com BD
 #filename: o arquivo do sqlite3
@@ -107,7 +109,7 @@ class IomatDocDAO(object):
 
 #envia informações extraídas para a lista de e-mails
 def sendEmailInfo(info,receiver):
-    print type(info)
+    #print type(info)
     msg = MIMEText(info,_charset="utf-8")
     msg['Subject'] = unicode(email_subject,"utf-8")
     msg['From']=gmail_username
@@ -121,7 +123,7 @@ def sendEmailInfo(info,receiver):
 
 #recebe um element e busca no arquivo o conteúdo
 def getPDFContent(doc,search_terms):
-    print "getPDFContent"
+    #print "getPDFContent"
     filename = "iomat_%s.pdf" % (doc.date.replace("/","-"))
     content = ""
     pdf = pyPdf.PdfFileReader(file(filename,'rb'))
@@ -129,10 +131,10 @@ def getPDFContent(doc,search_terms):
     
     for i in range (0,pdf.getNumPages()):
         page_content = pdf.getPage(i).extractText().lower()
-        print type(page_content)
+        #print type(page_content)
         
         for term in search_terms:
-            print u"Procurando o termo %s" % term
+            #print u"Procurando o termo %s" % term
             if page_content.find(term) != -1:
                 where = page_content.find(term)
                 str = str + "O termo %s foi encontrado no diario %s na pagina %d \n" % (term,filename,i+1)
@@ -172,8 +174,7 @@ def downloadDocument(doc):
         os.system("wget http://www.iomat.mt.gov.br/ler_pdf.php?download=ok\&edi_id=%d\&page=0 -q --output-document iomat_%s.pdf" % (doc.value,doc.date.replace("/","-")))    
     except Exception as exc:
         msg = "iomatdaemon: Exception occured: "+str(type(exc))+"  args:"+str(exc)
-        print msg
-        #syslog.syslog(msg)
+        logging.error(msg)
     
 def main():
     loadConf()
@@ -184,16 +185,15 @@ def main():
     for e in elements:
         dao = IomatDocDAO(e)
         if not dao.is_in_db():
-            #syslog.syslog('iomatdaemon: Verificando documento: %s' % (str(e)))
-            print('Verificando documento: %s' % (str(e)))            
+            logging.info('Verificando documento: %s' % (str(e)))            
             downloadDocument(e)
-            print "Documento baixado"
+            logging.info("Documento baixado")
             str_content = ''
-            print dict_conf
-            print dict_conf.keys()
+            #print dict_conf
+            #print dict_conf.keys()
             
             for key in dict_conf.keys():
-                print "Procurando a chave %s" % key
+                logging.info("Procurando a chave %s" % key)
                 str_content = getPDFContent(e,dict_conf[key])
                 sendEmailInfo(str_content,key)
                 
@@ -209,7 +209,5 @@ if __name__ == "__main__":
     except Exception as exc:
          exc_type, exc_obj, exc_tb = sys.exc_info()
          msg = "iomatdaemon: Exception occured in main: "+str(type(exc))+"  args:"+str(exc)+" line:"+str(exc_tb.tb_lineno)
-         traceback.print_exc()
-         print msg
-         #syslog.syslog(msg)
-         #syslog.syslog(formatted)
+         #traceback.print_exc()
+         logging.error(msg)
